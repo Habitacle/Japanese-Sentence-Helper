@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Sentence Helper</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        html *{
+            font-family: "Noto Sans", sans-serif;
+        }
+        body {
+            text-align: center;
+            background: #f6f8fa;
+        }
+        #container-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+        #container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+        .block-container {
+            display: flex;
+            align-items: flex-start;
+        }
+        .block {
+            width: 180px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: white;
+            text-align: center;
+            position: relative;
+        }
+        .block2 {
+            width: 120px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .block img {
+            width: 102px;
+            height: 102px;
+            object-fit: none;
+            border-radius: 5px;
+        }
+        .text-overlay {
+            font-family: 'Zen Antique';
+            font-size: 24px;
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            color: black;
+            border: 2px solid black;
+            padding-inline: 5px;
+            border-radius: 10px;
+        }
+        .inverse-text {
+            background: black;
+            color: white;
+            border: 2px solid white;
+        }
+        .delete-btn {
+            font-family: Arial;
+            font-size: 12px;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #E81123;
+            color: #EFF0F3;
+            border: none;
+            border-radius: 50%;
+            padding: 2px 5px;
+            cursor: pointer;
+        }
+        .fixed-block {
+            position: sticky;
+            right: 0;
+            top: 0;
+            align-self: flex-start;
+        }
+        input[type="text"] {
+            pointer-events: auto;
+            font-size: 18px;
+            width: 160px;
+        }
+        select {
+            font-size: 18px;
+        }
+        button {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Japanese Sentence Helper</h2>
+    <button onclick="addBlock('carriage.png', 'の', 'Carriage')">Add Carriage</button>
+    <button onclick="addBlock('engine.png', 'て', 'Engine')">Add Engine</button>
+    <button onclick="addBlock('flag.png', 'は', 'Flag')">Add Flag</button>
+    <button onclick="addBlock('conjunction.png', '', 'Conjunction')">Add Conjunction</button>
+    <button onclick="addBlock('main_carriage.png', 'Øが', 'Main Carriage')">Add Main Carriage</button>
+    <button onclick="addBlock('main_engine.png', 'だ', 'Main Engine')">Add Main Engine</button>
+    <br><br>
+    <div id="container-wrapper">
+        <div id="container"></div>
+    </div>
+    <br>
+    <input id="filename-input" placeholder="全文" size="100" style="font-size: 18px;">
+    <br><br>
+    <button id="export-button">Export as Image</button>
+
+    <script>
+        let blockCounter = 0;
+
+        function addBlock(imageSrc, text, type, deletable = true) {
+            let id = `block-${blockCounter++}`;
+            let block = document.createElement("div");
+            block.classList.add("block");
+            block.setAttribute("data-id", id);
+            let options = getOptionsForType(type);
+            let textOverlayClass = (type === 'Main Carriage' || type === 'Main Engine') ? 'text-overlay inverse-text' : 'text-overlay';
+            let textOverlayDisplay = (type === 'Conjunction') ? 'style="display:none;"' : '';
+            let selectDisplay = (type === 'Conjunction') ? 'style="visibility:hidden;"' : '';
+            block.innerHTML = `
+                ${deletable ? `<button class="delete-btn" onclick="deleteBlock('${id}')">X</button>` : ''}
+                <img src="${imageSrc}" class="block-img">
+                <div class="${textOverlayClass}" ${textOverlayDisplay}>${text}</div><br>
+                <select onchange="changeText('${id}', this.value)" ${selectDisplay}>${options}</select>
+                <br>
+                <input type="text" placeholder="入力する…" onmousedown="event.stopPropagation()">
+            `;
+            let container = document.getElementById("container");
+            container.insertBefore(block, container.lastElementChild);
+            addTransparency(id, text);
+        }
+
+        function getOptionsForType(type) {
+            switch (type) {
+                case 'Carriage':
+                    return `
+                        <option>の</option>
+                        <option>を</option>
+                        <option>に</option>
+                        <option>へ</option>
+                        <option>で</option>
+                        <option>と</option>
+                        <option>か</option>
+                        <option>が</option>
+                        <option>副</option>
+                        <option>R</option>
+                        <option>Øを</option>
+                    `;
+                case 'Engine':
+                    return `
+                        <option>て</option>
+                        <option>だ</option>
+                        <option>う</option>
+                        <option>い</option>
+                    `;
+                case 'Flag':
+                    return `
+                        <option>は</option>
+                        <option>も</option>
+                        <option>か</option>
+                        <option>ね</option>
+                        <option>よ</option>
+                        <option>と</option>
+                        <option>って</option>
+                    `;
+                case 'Main Carriage':
+                    return `
+                        <option>Øが</option>
+                        <option>が</option>
+                        <option>や</option>
+                    `;
+                case 'Main Engine':
+                    return `
+                        <option>だ</option>
+                        <option>う</option>
+                        <option>い</option>
+                    `;
+                case 'Conjunction':
+                    return;
+                default:
+                    return `
+                        <option>が</option>
+                    `;
+            }
+        }
+
+        function changeText(id, newText) {
+            document.querySelector(`[data-id="${id}"] .text-overlay`).textContent = newText;
+            addTransparency(id, newText);
+        }
+
+        function addTransparency(id, value) {
+            const block = document.querySelector(`[data-id="${id}"]`);
+            if (value === "Øが" || value === "Øを") {
+                block.style.opacity = "0.5";
+            } else {
+                block.style.opacity = "1";
+            }
+        }
+
+        function deleteBlock(id) {
+            document.querySelector(`[data-id="${id}"]`).remove();
+        }
+        
+        new Sortable(document.getElementById("container"), {
+            animation: 150,
+            filter: "input, select",
+            preventOnFilter: false
+        });
+
+        addBlock('main_engine.png', 'だ', 'Main Engine', false);
+        addBlock('main_carriage.png', 'Øが', 'Main Carriage', false);
+
+        document.getElementById('export-button').addEventListener('click', function() {
+            const selects = document.querySelectorAll('#container select');
+            const deleteButtons = document.querySelectorAll('#container .delete-btn');
+            selects.forEach(select => select.style.visibility = 'hidden');
+            deleteButtons.forEach(button => button.style.visibility = 'hidden');
+
+            html2canvas(document.getElementById('container')).then(function(canvas) {
+                var link = document.createElement('a');
+                const filename = document.getElementById('filename-input').value || '文';
+                link.download = `${filename}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                selects.forEach(select => select.style.visibility = 'visible');
+                deleteButtons.forEach(button => button.style.visibility = 'visible');
+            });
+        });
+    </script>
+
+</body>
+</html>
